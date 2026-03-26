@@ -3223,30 +3223,15 @@ function submitApplication() {
     .then(function(res) { console.log('✅ Internal email sent:', res.status); })
     .catch(function(err) { console.warn('❌ Internal email failed:', err); });
 
-    // Step 2b: Partner confirmation email via EmailJS
-    emailjs.send('service_7hwf1kb', 'template_9ogxmfm', {
+    // Step 2b: Partner confirmation email via EmailJS (separate template — no SCM buttons)
+    emailjs.send('service_7hwf1kb', 'template_evh9oia', {
       to_email:          d.contact_email,
       ref_id:            ref,
       submitted_at:      now_display,
-      email:             d.contact_email,
       company_name:      d.company_name,
-      company_address:   d.company_address,
-      corporate_address: d.company_address,
-      incorporation:     'Private Limited',
+      email:             d.contact_email,
       phone:             d.contact_phone,
-      gstin:             d.gst_number,
-      pan:               d.pan_number,
-      bank_account:      d.bank_account,
-      ifsc:              d.ifsc_code,
-      gstin_file_name:   window._gstCertName || 'Not uploaded',
-      modules:           d.business_interest || 'Not specified',
-      signatory_name:    d.signatory_name,
-      signatory_desig:   d.signatory_designation,
-      signatory_email:   d.signatory_email,
-      witness_name:      d.witness_name        || '—',
-      witness_desig:     d.witness_designation || '—',
-      witness_email:     d.witness_email       || '—',
-      approve_url:       ''
+      modules:           d.business_interest || 'Not specified'
     })
     .then(function(res) { console.log('✅ Confirmation email sent:', res.status); })
     .catch(function(err) { console.warn('❌ Confirmation email failed:', err); });
