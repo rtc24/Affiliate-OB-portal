@@ -780,18 +780,27 @@ window.addEventListener('DOMContentLoaded', function() {
       document.getElementById('scmError').style.display = 'none';
 
       var newStatus = action === 'approve' ? 'active' : 'rejected';
-      fetch('https://ughrnlajvfjnclwexalc.supabase.co/rest/v1/partners?ref_number=eq.' + ref, {
+      var ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnaHJubGFqdmZqbmNsd2V4YWxjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMDM2MjQsImV4cCI6MjA4OTc3OTYyNH0.u-dVWtG_b3l33xY4M1ToPnDSQ7esmj1fbXQErRimC2U';
+      // Pass apikey as URL param to avoid header stripping issues
+      fetch('https://ughrnlajvfjnclwexalc.supabase.co/rest/v1/partners?ref_number=eq.' + encodeURIComponent(ref) + '&apikey=' + ANON_KEY, {
         method: 'PATCH',
         headers: {
           'Content-Type':  'application/json',
-          'apikey':        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnaHJubGFqdmZqbmNsd2V4YWxjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMDM2MjQsImV4cCI6MjA4OTc3OTYyNH0.u-dVWtG_b3l33xY4M1ToPnDSQ7esmj1fbXQErRimC2U',
-          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnaHJubGFqdmZqbmNsd2V4YWxjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMDM2MjQsImV4cCI6MjA4OTc3OTYyNH0.u-dVWtG_b3l33xY4M1ToPnDSQ7esmj1fbXQErRimC2U',
+          'Authorization': 'Bearer ' + ANON_KEY,
           'Prefer':        'return=representation'
         },
         body: JSON.stringify({ status: newStatus })
       })
-      .then(function(r) { return r.json(); })
-      .then(function() {
+      .then(function(r) {
+        if (!r.ok) {
+          return r.text().then(function(t) { throw new Error('Supabase error ' + r.status + ': ' + t); });
+        }
+        return r.json();
+      })
+      .then(function(rows) {
+        if (!rows || rows.length === 0) {
+          throw new Error('No record found for reference ' + ref + '. It may not exist in the database.');
+        }
         var msg = action === 'approve'
           ? '✅ Partner ' + ref + ' has been APPROVED successfully.'
           : '❌ Partner ' + ref + ' has been REJECTED.';
