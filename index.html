@@ -3083,7 +3083,12 @@ function submitApplication() {
 
   var ref = generateRefNumber();
   window._currentRefNumber = ref;
-  var now = new Date().toISOString(); // ISO format — Supabase requires this
+  var now = new Date().toISOString();
+
+  var now_display = new Date().toLocaleString('en-IN', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
 
   var d = {
     ref_number:            ref,
@@ -3106,7 +3111,6 @@ function submitApplication() {
     business_interest:     getBusinessInterest()
   };
 
-  // Only send fields that exist in the DB schema
   var dbRow = {
     ref_number:            d.ref_number,
     company_name:          d.company_name,
@@ -3154,30 +3158,39 @@ function submitApplication() {
     var partnerId = (rows && rows[0]) ? rows[0].id : 'unknown';
     console.log('Supabase saved. Partner ID:', partnerId);
 
-    // Step 2: Send emails via Resend
-    var internalHtml = buildHtmlEmail(d);
-    var confirmHtml  = buildPartnerConfirmEmail(d);
-
-    Promise.all([
-      sendResendEmail(
-        'rohit.chahar@cars24.com',
-        '\uD83D\uDD14 New Partner Application: ' + d.company_name + ' [' + ref + ']',
-        internalHtml
-      ),
-      sendResendEmail(
-        d.contact_email,
-        '\u2705 Application Received \u2013 Cars24 Partner Program [' + ref + ']',
-        confirmHtml
-      )
-    ])
-    .then(function() { console.log('Both Resend emails sent successfully.'); })
-    .catch(function(e) { console.warn('Resend email error:', e); });
+    // Step 2: Send email via EmailJS
+    emailjs.send('service_7hwf1kb', 'template_9ogxmfm', {
+      to_email:          'rohit.chahar@cars24.com',
+      ref_id:            ref,
+      submitted_at:      now_display,
+      email:             d.contact_email,
+      company_name:      d.company_name,
+      company_address:   d.company_address,
+      corporate_address: d.company_address,
+      incorporation:     'Private Limited',
+      phone:             d.contact_phone,
+      gstin:             d.gst_number,
+      gstin_file_name:   window._gstCertName || 'Not uploaded',
+      modules:           d.business_interest || 'Not specified',
+      signatory_name:    d.signatory_name,
+      signatory_desig:   d.signatory_designation,
+      signatory_email:   d.signatory_email,
+      witness_name:      d.witness_name        || '—',
+      witness_desig:     d.witness_designation || '—',
+      witness_email:     d.witness_email       || '—'
+    })
+    .then(function(res) {
+      console.log('✅ Internal email sent:', res.status);
+    })
+    .catch(function(err) {
+      console.warn('❌ Internal email failed:', err);
+    });
   })
   .catch(function(e) {
     console.error('Supabase fetch failed:', e);
   });
 
-  // Step 3: Show success after 1200ms regardless
+  // Step 3: Show success after 1200ms
   setTimeout(function() {
     submitBtn.disabled    = false;
     submitBtn.textContent = '🚀 Submit Application';
