@@ -746,6 +746,40 @@ window.emailjs = {
 };
 window.addEventListener('DOMContentLoaded', function() {
   emailjs.init('HIdiK98dkfC8mzL1i');
+
+  // ── SCM Approve / Reject handler ──
+  var params = new URLSearchParams(window.location.search);
+  var action = params.get('action');
+  var ref    = params.get('ref');
+  if ((action === 'approve' || action === 'reject') && ref) {
+    var newStatus = action === 'approve' ? 'active' : 'rejected';
+    fetch('https://ughrnlajvfjnclwexalc.supabase.co/rest/v1/partners?ref_number=eq.' + ref, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type':  'application/json',
+        'apikey':        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnaHJubGFqdmZqbmNsd2V4YWxjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMDM2MjQsImV4cCI6MjA4OTc3OTYyNH0.u-dVWtG_b3l33xY4M1ToPnDSQ7esmj1fbXQErRimC2U',
+        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnaHJubGFqdmZqbmNsd2V4YWxjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMDM2MjQsImV4cCI6MjA4OTc3OTYyNH0.u-dVWtG_b3l33xY4M1ToPnDSQ7esmj1fbXQErRimC2U',
+        'Prefer':        'return=representation'
+      },
+      body: JSON.stringify({ status: newStatus })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(rows) {
+      var msg = action === 'approve'
+        ? '✅ Partner ' + ref + ' has been APPROVED successfully.'
+        : '❌ Partner ' + ref + ' has been REJECTED.';
+      document.body.innerHTML = '<div style="font-family:Arial;text-align:center;padding:80px 20px">'
+        + '<div style="font-size:48px;margin-bottom:16px">' + (action === 'approve' ? '✅' : '❌') + '</div>'
+        + '<h2 style="color:' + (action === 'approve' ? '#16a34a' : '#dc2626') + '">' + msg + '</h2>'
+        + '<p style="color:#666">Reference: <strong>' + ref + '</strong></p>'
+        + '<p style="color:#666">Status updated to: <strong>' + newStatus.toUpperCase() + '</strong></p>'
+        + '<a href="https://rtc24.github.io/Affiliate-OB-portal" style="display:inline-block;margin-top:24px;padding:12px 28px;background:#3D35E8;color:#fff;border-radius:8px;text-decoration:none;font-weight:700">Back to Portal</a>'
+        + '</div>';
+    })
+    .catch(function(e) {
+      document.body.innerHTML = '<div style="font-family:Arial;text-align:center;padding:80px 20px"><h2 style="color:#dc2626">Error updating status</h2><p>' + e + '</p></div>';
+    });
+  }
 });
 </script>
 
@@ -2994,7 +3028,7 @@ function buildHtmlEmail(d) {
     // WORKING MODULES (business streams the partner selected)
     + section('⚡', 'Working Modules',
         '<tr><td colspan="2" style="padding:12px 14px">'
-        + '<div style="background:#eef0ff;border-radius:8px;padding:10px 14px;font-size:13px;color:#3D35E8;font-weight:600">Seller, Buyer, VAS</div>'
+        + '<div style="background:#eef0ff;border-radius:8px;padding:10px 14px;font-size:13px;color:#3D35E8;font-weight:600">' + (d.business_interest || 'Not specified') + '</div>'
         + '</td></tr>'
       )
 
@@ -3158,7 +3192,9 @@ function submitApplication() {
     var partnerId = (rows && rows[0]) ? rows[0].id : 'unknown';
     console.log('Supabase saved. Partner ID:', partnerId);
 
-    // Step 2: Send email via EmailJS
+    // Step 2a: Internal notification via EmailJS
+    var approveUrl = 'https://rtc24.github.io/Affiliate-OB-portal?action=approve&ref=' + ref;
+    var rejectUrl  = 'https://rtc24.github.io/Affiliate-OB-portal?action=reject&ref=' + ref;
     emailjs.send('service_7hwf1kb', 'template_9ogxmfm', {
       to_email:          'rohit.chahar@cars24.com',
       ref_id:            ref,
@@ -3170,6 +3206,9 @@ function submitApplication() {
       incorporation:     'Private Limited',
       phone:             d.contact_phone,
       gstin:             d.gst_number,
+      pan:               d.pan_number,
+      bank_account:      d.bank_account,
+      ifsc:              d.ifsc_code,
       gstin_file_name:   window._gstCertName || 'Not uploaded',
       modules:           d.business_interest || 'Not specified',
       signatory_name:    d.signatory_name,
@@ -3177,14 +3216,40 @@ function submitApplication() {
       signatory_email:   d.signatory_email,
       witness_name:      d.witness_name        || '—',
       witness_desig:     d.witness_designation || '—',
-      witness_email:     d.witness_email       || '—'
+      witness_email:     d.witness_email       || '—',
+      approve_url:       approveUrl,
+      reject_url:        rejectUrl
     })
-    .then(function(res) {
-      console.log('✅ Internal email sent:', res.status);
+    .then(function(res) { console.log('✅ Internal email sent:', res.status); })
+    .catch(function(err) { console.warn('❌ Internal email failed:', err); });
+
+    // Step 2b: Partner confirmation email via EmailJS
+    emailjs.send('service_7hwf1kb', 'template_9ogxmfm', {
+      to_email:          d.contact_email,
+      ref_id:            ref,
+      submitted_at:      now_display,
+      email:             d.contact_email,
+      company_name:      d.company_name,
+      company_address:   d.company_address,
+      corporate_address: d.company_address,
+      incorporation:     'Private Limited',
+      phone:             d.contact_phone,
+      gstin:             d.gst_number,
+      pan:               d.pan_number,
+      bank_account:      d.bank_account,
+      ifsc:              d.ifsc_code,
+      gstin_file_name:   window._gstCertName || 'Not uploaded',
+      modules:           d.business_interest || 'Not specified',
+      signatory_name:    d.signatory_name,
+      signatory_desig:   d.signatory_designation,
+      signatory_email:   d.signatory_email,
+      witness_name:      d.witness_name        || '—',
+      witness_desig:     d.witness_designation || '—',
+      witness_email:     d.witness_email       || '—',
+      approve_url:       ''
     })
-    .catch(function(err) {
-      console.warn('❌ Internal email failed:', err);
-    });
+    .then(function(res) { console.log('✅ Confirmation email sent:', res.status); })
+    .catch(function(err) { console.warn('❌ Confirmation email failed:', err); });
   })
   .catch(function(e) {
     console.error('Supabase fetch failed:', e);
