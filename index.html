@@ -752,33 +752,63 @@ window.addEventListener('DOMContentLoaded', function() {
   var action = params.get('action');
   var ref    = params.get('ref');
   if ((action === 'approve' || action === 'reject') && ref) {
-    var newStatus = action === 'approve' ? 'active' : 'rejected';
-    fetch('https://ughrnlajvfjnclwexalc.supabase.co/rest/v1/partners?ref_number=eq.' + ref, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type':  'application/json',
-        'apikey':        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnaHJubGFqdmZqbmNsd2V4YWxjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMDM2MjQsImV4cCI6MjA4OTc3OTYyNH0.u-dVWtG_b3l33xY4M1ToPnDSQ7esmj1fbXQErRimC2U',
-        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnaHJubGFqdmZqbmNsd2V4YWxjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMDM2MjQsImV4cCI6MjA4OTc3OTYyNH0.u-dVWtG_b3l33xY4M1ToPnDSQ7esmj1fbXQErRimC2U',
-        'Prefer':        'return=representation'
-      },
-      body: JSON.stringify({ status: newStatus })
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(rows) {
-      var msg = action === 'approve'
-        ? '✅ Partner ' + ref + ' has been APPROVED successfully.'
-        : '❌ Partner ' + ref + ' has been REJECTED.';
-      document.body.innerHTML = '<div style="font-family:Arial;text-align:center;padding:80px 20px">'
-        + '<div style="font-size:48px;margin-bottom:16px">' + (action === 'approve' ? '✅' : '❌') + '</div>'
-        + '<h2 style="color:' + (action === 'approve' ? '#16a34a' : '#dc2626') + '">' + msg + '</h2>'
-        + '<p style="color:#666">Reference: <strong>' + ref + '</strong></p>'
-        + '<p style="color:#666">Status updated to: <strong>' + newStatus.toUpperCase() + '</strong></p>'
-        + '<a href="https://rtc24.github.io/Affiliate-OB-portal" style="display:inline-block;margin-top:24px;padding:12px 28px;background:#3D35E8;color:#fff;border-radius:8px;text-decoration:none;font-weight:700">Back to Portal</a>'
-        + '</div>';
-    })
-    .catch(function(e) {
-      document.body.innerHTML = '<div style="font-family:Arial;text-align:center;padding:80px 20px"><h2 style="color:#dc2626">Error updating status</h2><p>' + e + '</p></div>';
-    });
+    var ALLOWED_EMAIL = 'neel.goswami@cars24.com';
+    var actionLabel   = action === 'approve' ? 'Approve' : 'Reject';
+    var actionColor   = action === 'approve' ? '#16a34a' : '#dc2626';
+
+    // Show email confirmation gate before allowing action
+    document.body.innerHTML =
+      '<div style="font-family:Arial;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f4f4f4">'
+      + '<div style="background:#fff;border-radius:12px;padding:40px;max-width:420px;width:90%;box-shadow:0 4px 24px rgba(0,0,0,.1);text-align:center">'
+      + '<div style="font-size:40px;margin-bottom:12px">' + (action === 'approve' ? '✅' : '❌') + '</div>'
+      + '<h2 style="margin:0 0 6px;color:#111">' + actionLabel + ' Partner</h2>'
+      + '<p style="color:#666;font-size:14px;margin:0 0 24px">Reference: <strong>' + ref + '</strong></p>'
+      + '<p style="color:#444;font-size:14px;margin:0 0 16px">Enter your SCM email to confirm this action:</p>'
+      + '<input id="scmEmailInput" type="email" placeholder="your@cars24.com" style="width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box;margin-bottom:12px">'
+      + '<div id="scmError" style="color:#dc2626;font-size:13px;margin-bottom:12px;display:none">Access denied. Only authorised SCM can perform this action.</div>'
+      + '<button onclick="scmConfirmAction()" style="width:100%;padding:13px;background:' + actionColor + ';color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer">'
+      + actionLabel + ' →</button>'
+      + '<a href="https://rtc24.github.io/Affiliate-OB-portal" style="display:block;margin-top:16px;color:#888;font-size:13px;text-decoration:none">Cancel — Back to Portal</a>'
+      + '</div></div>';
+
+    window.scmConfirmAction = function() {
+      var entered = document.getElementById('scmEmailInput').value.trim().toLowerCase();
+      if (entered !== ALLOWED_EMAIL) {
+        document.getElementById('scmError').style.display = 'block';
+        return;
+      }
+      document.getElementById('scmError').style.display = 'none';
+
+      var newStatus = action === 'approve' ? 'active' : 'rejected';
+      fetch('https://ughrnlajvfjnclwexalc.supabase.co/rest/v1/partners?ref_number=eq.' + ref, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type':  'application/json',
+          'apikey':        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnaHJubGFqdmZqbmNsd2V4YWxjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMDM2MjQsImV4cCI6MjA4OTc3OTYyNH0.u-dVWtG_b3l33xY4M1ToPnDSQ7esmj1fbXQErRimC2U',
+          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnaHJubGFqdmZqbmNsd2V4YWxjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMDM2MjQsImV4cCI6MjA4OTc3OTYyNH0.u-dVWtG_b3l33xY4M1ToPnDSQ7esmj1fbXQErRimC2U',
+          'Prefer':        'return=representation'
+        },
+        body: JSON.stringify({ status: newStatus })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function() {
+        var msg = action === 'approve'
+          ? '✅ Partner ' + ref + ' has been APPROVED successfully.'
+          : '❌ Partner ' + ref + ' has been REJECTED.';
+        document.body.innerHTML =
+          '<div style="font-family:Arial;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f4f4f4">'
+          + '<div style="background:#fff;border-radius:12px;padding:40px;max-width:420px;width:90%;box-shadow:0 4px 24px rgba(0,0,0,.1);text-align:center">'
+          + '<div style="font-size:48px;margin-bottom:16px">' + (action === 'approve' ? '✅' : '❌') + '</div>'
+          + '<h2 style="color:' + actionColor + ';margin:0 0 12px">' + msg + '</h2>'
+          + '<p style="color:#666">Reference: <strong>' + ref + '</strong></p>'
+          + '<p style="color:#666">Status updated to: <strong>' + newStatus.toUpperCase() + '</strong></p>'
+          + '<a href="https://rtc24.github.io/Affiliate-OB-portal" style="display:inline-block;margin-top:24px;padding:12px 28px;background:#3D35E8;color:#fff;border-radius:8px;text-decoration:none;font-weight:700">Back to Portal</a>'
+          + '</div></div>';
+      })
+      .catch(function(e) {
+        document.body.innerHTML = '<div style="font-family:Arial;text-align:center;padding:80px 20px"><h2 style="color:#dc2626">Error updating status</h2><p>' + e + '</p></div>';
+      });
+    };
   }
 });
 </script>
