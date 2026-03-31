@@ -3202,10 +3202,42 @@ function submitApplication() {
     witness_email:         d.witness_email,
     status:                'pending',
     business_interest:     d.business_interest || 'Not specified',
-    submitted_at:          now
+    submitted_at:          now,
+    gst_document_url:      null
   };
 
   console.log('Saving to Supabase:', dbRow);
+
+  // Step 0: Upload GST file to Supabase Storage (fire and forget, update row after)
+  if (window._gstCertFile) {
+    var gstFile = window._gstCertFile;
+    var ext = gstFile.name.split('.').pop();
+    var storagePath = ref + '/' + 'gst-certificate.' + ext;
+    fetch('https://ughrnlajvfjnclwexalc.supabase.co/storage/v1/object/Affiliate%20Gst-documents/' + storagePath, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnaHJubGFqdmZqbmNsd2V4YWxjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMDM2MjQsImV4cCI6MjA4OTc3OTYyNH0.u-dVWtG_b3l33xY4M1ToPnDSQ7esmj1fbXQErRimC2U',
+        'Content-Type': gstFile.type,
+        'x-upsert': 'true'
+      },
+      body: gstFile
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      console.log('GST file uploaded:', res);
+      var fileUrl = 'https://ughrnlajvfjnclwexalc.supabase.co/storage/v1/object/public/Affiliate%20Gst-documents/' + storagePath;
+      // Update the partners row with the file URL
+      fetch('https://ughrnlajvfjnclwexalc.supabase.co/rest/v1/partners?ref_number=eq.' + ref + '&apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnaHJubGFqdmZqbmNsd2V4YWxjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMDM2MjQsImV4cCI6MjA4OTc3OTYyNH0.u-dVWtG_b3l33xY4M1ToPnDSQ7esmj1fbXQErRimC2U', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnaHJubGFqdmZqbmNsd2V4YWxjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMDM2MjQsImV4cCI6MjA4OTc3OTYyNH0.u-dVWtG_b3l33xY4M1ToPnDSQ7esmj1fbXQErRimC2U'
+        },
+        body: JSON.stringify({ gst_document_url: fileUrl })
+      }).then(function() { console.log('GST URL saved to partners row.'); });
+    })
+    .catch(function(e) { console.warn('GST upload failed:', e); });
+  }
 
   // Step 1: Save to Supabase
   fetch('https://ughrnlajvfjnclwexalc.supabase.co/rest/v1/partners', {
@@ -3519,6 +3551,7 @@ function handleGstUpload(input) {
   window._gstCertName = file.name;
   window._gstCertType = file.type;
   window._gstCertBase64 = null;
+  window._gstCertFile = file;
 
   if (file.type.startsWith('image/')) {
     // Compress image to max 600px wide before storing
