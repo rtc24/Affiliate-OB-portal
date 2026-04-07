@@ -2670,11 +2670,11 @@ function calcSeller() {
   var i2si = +document.getElementById('s-i2si').value;
   var a2i = +document.getElementById('s-a2i').value;
   var insp = +document.getElementById('s-insp').value;
-  var mAsp = asp / 275000;
-  var mI2si = i2si / 16;
-  var mA2i = a2i / 50;
+  var mAsp = Math.min(asp / 275000, 1);
+  var mI2si = Math.min(i2si / 16, 1);
+  var mA2i = Math.min(a2i / 50, 1);
   var cpi = 1400 * mAsp * mI2si * mA2i;
-  var capCpi = Math.min(cpi, 1400);
+  var capCpi = cpi;
   var total = capCpi * insp;
   document.getElementById('s-asp-v').textContent = fmt(asp);
   document.getElementById('s-i2si-v').textContent = fmtP(i2si);
@@ -3386,14 +3386,6 @@ window.addEventListener('DOMContentLoaded', function() {
     setFieldState(el, !v || v.length < 6 || /^\d{9,18}$/.test(v));
   });
 });
-
-function sendResendEmail(to, subject, html) {
-  return fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { 'Authorization': 'Bearer re_CDHWZMt9_F5DhcvkkArKuzgruMRAJD8Ua', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: 'Cars24 Partner Portal <onboarding@resend.dev>', to: to, subject: subject, html: html })
-  }).then(function(r){ return r.json(); }).then(function(res){ console.log('Resend:', res); });
-}
 
 function resetLoginForm() {
   document.getElementById('onboardingForm').style.display = 'none';
